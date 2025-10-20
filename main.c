@@ -15,12 +15,22 @@
 
 int main(int argc, char **argv)
 {
-	int fd = open(argv[argc - 1], O_RDONLY);
-	char *line;
-	while (get_next_line(fd, &line))
+	int		fd;
+	char	*line;
+	int		ret;
+
+	if (argc < 2)
+		return (1);
+	fd = open(argv[argc - 1], O_RDONLY);
+	if (fd < 0)
+		return (1);
+	while ((ret = get_next_line(fd, &line)) > 0)
 	{
 		ft_putendl(line);
 		free(line);
 	}
+	if (ret == 0)
+		free(line);
+	close(fd);
 	return (0);
 }

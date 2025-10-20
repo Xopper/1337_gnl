@@ -1,0 +1,21 @@
+# Compiled files
+*.o
+*.a
+*.gch
+gnl_test
+
+# Test artifacts
+leak_tests/
+*.log
+
+# macOS
+.DS_Store
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Temporary files
+tmp/
+temp/

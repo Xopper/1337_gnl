@@ -161,11 +161,29 @@ int ret;
 while ((ret = get_next_line(fd, &line)) > 0)
 {
     // Use line
-    free(line);  // MUST FREE
+    free(line);  // MUST FREE each line
 }
-// When ret == 0 or -1, internal memory is cleaned up
+
+// IMPORTANT: When ret == 0 (EOF), the last line is still allocated!
+if (ret == 0)
+    free(line);  // FREE the last line
+
+// When ret == -1 (error), no line is allocated, don't free
+
 close(fd);
 ```
+
+### Critical: EOF Handling
+
+When `get_next_line()` returns 0:
+- EOF has been reached
+- The LAST line is still allocated (if file doesn't end with \n)
+- You MUST free it
+
+This is by design:
+- Return value 1 = line read, more content available
+- Return value 0 = last line read, EOF reached
+- Return value -1 = error, no line allocated
 
 ## Conclusion
 
