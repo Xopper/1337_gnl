@@ -19,7 +19,13 @@
 # include <limits.h>
 
 # define BUFF_SIZE 32
-# define OPEN_MAX 4096
+
+typedef struct		s_fd_list
+{
+	int				fd;
+	char			*rest;
+	struct s_fd_list	*next;
+}					t_fd_list;
 
 int		get_next_line(const int fd, char **line);
 

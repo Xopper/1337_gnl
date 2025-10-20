@@ -12,7 +12,34 @@
 
 #include "get_next_line.h"
 
-static char	*ft_read_buffer(int fd, char *rest)
+static t_fd_list	*ft_find_or_create(t_fd_list **head, int fd)
+{
+	t_fd_list	*current;
+	t_fd_list	*new_node;
+
+	current = *head;
+	while (current)
+	{
+		if (current->fd == fd)
+			return (current);
+		current = current->next;
+	}
+	new_node = (t_fd_list *)malloc(sizeof(t_fd_list));
+	if (!new_node)
+		return (NULL);
+	new_node->fd = fd;
+	new_node->rest = ft_strnew(0);
+	if (!new_node->rest)
+	{
+		free(new_node);
+		return (NULL);
+	}
+	new_node->next = *head;
+	*head = new_node;
+	return (new_node);
+}
+
+static int	ft_read_buffer(int fd, t_fd_list *node)
 {
 	char	*buffer;
 	char	*tmp;
@@ -20,81 +47,98 @@ static char	*ft_read_buffer(int fd, char *rest)
 
 	buffer = (char *)malloc(sizeof(char) * (BUFF_SIZE + 1));
 	if (!buffer)
-		return (NULL);
+		return (-1);
 	bytes_read = 1;
-	while (bytes_read > 0 && !ft_strchr(rest, '\n'))
+	while (bytes_read > 0 && !ft_strchr(node->rest, '\n'))
 	{
 		bytes_read = read(fd, buffer, BUFF_SIZE);
 		if (bytes_read < 0)
 		{
 			free(buffer);
-			return (NULL);
+			return (-1);
 		}
 		buffer[bytes_read] = '\0';
-		tmp = ft_strjoin(rest, buffer);
-		free(rest);
-		rest = tmp;
+		tmp = ft_strjoin(node->rest, buffer);
+		if (!tmp)
+		{
+			free(buffer);
+			return (-1);
+		}
+		free(node->rest);
+		node->rest = tmp;
 	}
 	free(buffer);
-	return (rest);
+	return (0);
 }
 
-static char	*ft_extract_line(char *rest)
-{
-	int		i;
-	char	*line;
-
-	i = 0;
-	if (!rest)
-		return (NULL);
-	while (rest[i] && rest[i] != '\n')
-		i++;
-	line = ft_strsub(rest, 0, i);
-	return (line);
-}
-
-static char	*ft_update_rest(char *rest)
+static int	ft_extract_line(t_fd_list *node, char **line)
 {
 	int		i;
 	char	*new_rest;
 
 	i = 0;
-	if (!rest)
-		return (NULL);
-	while (rest[i] && rest[i] != '\n')
+	while (node->rest[i] && node->rest[i] != '\n')
 		i++;
-	if (!rest[i])
+	*line = ft_strsub(node->rest, 0, i);
+	if (!*line)
+		return (-1);
+	if (!node->rest[i])
 	{
-		free(rest);
-		return (NULL);
+		free(node->rest);
+		node->rest = NULL;
+		return (0);
 	}
-	new_rest = ft_strdup(rest + i + 1);
-	free(rest);
-	return (new_rest);
+	new_rest = ft_strdup(node->rest + i + 1);
+	if (!new_rest)
+	{
+		free(*line);
+		return (-1);
+	}
+	free(node->rest);
+	node->rest = new_rest;
+	return (1);
+}
+
+static void	ft_remove_node(t_fd_list **head, int fd)
+{
+	t_fd_list	*current;
+	t_fd_list	*prev;
+
+	current = *head;
+	prev = NULL;
+	while (current)
+	{
+		if (current->fd == fd)
+		{
+			if (prev)
+				prev->next = current->next;
+			else
+				*head = current->next;
+			if (current->rest)
+				free(current->rest);
+			free(current);
+			return ;
+		}
+		prev = current;
+		current = current->next;
+	}
 }
 
 int	get_next_line(const int fd, char **line)
 {
-	static char	*rest[OPEN_MAX];
+	static t_fd_list	*head;
+	t_fd_list			*node;
+	int					result;
 
-	if (fd < 0 || !line || BUFF_SIZE < 1 || fd >= OPEN_MAX)
+	if (fd < 0 || !line || BUFF_SIZE < 1)
 		return (-1);
-	if (!rest[fd])
-		rest[fd] = ft_strnew(0);
-	if (!rest[fd])
+	node = ft_find_or_create(&head, fd);
+	if (!node || !node->rest)
 		return (-1);
-	rest[fd] = ft_read_buffer(fd, rest[fd]);
-	if (!rest[fd])
+	if (ft_read_buffer(fd, node) < 0)
 		return (-1);
-	*line = ft_extract_line(rest[fd]);
-	if (!*line)
-		return (-1);
-	if (ft_strlen(*line) == 0 && ft_strlen(rest[fd]) == 0)
-	{
-		free(rest[fd]);
-		rest[fd] = NULL;
-		return (0);
-	}
-	rest[fd] = ft_update_rest(rest[fd]);
-	return (1);
+	result = ft_extract_line(node, line);
+	if (result <= 0)
+		ft_remove_node(&head, fd);
+	return (result);
 }
