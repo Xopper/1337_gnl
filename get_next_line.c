@@ -12,29 +12,89 @@
 
 #include "get_next_line.h"
 
-int				get_next_line(const int fd, char **line)
+static char	*ft_read_buffer(int fd, char *rest)
 {
-	char		buf[BUFF_SIZE + 1];
-	static char	*rest[5000];
-	int			ret;
+	char	*buffer;
+	char	*tmp;
+	int		bytes_read;
 
-	AS_RET(((BUFF_SIZE < 1) || read(fd, buf, 0) || !line || fd < 0
-			|| fd > 5000), -1);
-	ret = 0;
-	if (!rest[fd])
-		UN_RET((rest[fd] = ft_strnew(0)), -1);
-	while (!ft_strchr(rest[fd], '\n') && (ret = read(fd, buf, BUFF_SIZE)))
+	buffer = (char *)malloc(sizeof(char) * (BUFF_SIZE + 1));
+	if (!buffer)
+		return (NULL);
+	bytes_read = 1;
+	while (bytes_read > 0 && !ft_strchr(rest, '\n'))
 	{
-		buf[ret] = 0;
-		UN_RET((rest[TMP] = ft_strjoin(rest[fd], buf)), -1);
-		free(rest[fd]);
-		rest[fd] = rest[TMP];
+		bytes_read = read(fd, buffer, BUFF_SIZE);
+		if (bytes_read < 0)
+		{
+			free(buffer);
+			return (NULL);
+		}
+		buffer[bytes_read] = '\0';
+		tmp = ft_strjoin(rest, buffer);
+		free(rest);
+		rest = tmp;
 	}
-	AS_RET(rest[fd][0] == '\0' && ret < 1, ret);
-	UN_RET((*line = ft_strsub(rest[fd], 0, ft_strcspn(rest[fd], "\n"))), -1);
-	UN_RET((rest[TMP] = ft_strdup(rest[fd][ft_strcspn(rest[fd], "\n")] == '\n'
-			? &rest[fd][ft_strcspn(rest[fd], "\n") + 1] : "\0")), -1);
-	free(rest[fd]);
-	rest[fd] = rest[TMP];
+	free(buffer);
+	return (rest);
+}
+
+static char	*ft_extract_line(char *rest)
+{
+	int		i;
+	char	*line;
+
+	i = 0;
+	if (!rest)
+		return (NULL);
+	while (rest[i] && rest[i] != '\n')
+		i++;
+	line = ft_strsub(rest, 0, i);
+	return (line);
+}
+
+static char	*ft_update_rest(char *rest)
+{
+	int		i;
+	char	*new_rest;
+
+	i = 0;
+	if (!rest)
+		return (NULL);
+	while (rest[i] && rest[i] != '\n')
+		i++;
+	if (!rest[i])
+	{
+		free(rest);
+		return (NULL);
+	}
+	new_rest = ft_strdup(rest + i + 1);
+	free(rest);
+	return (new_rest);
+}
+
+int	get_next_line(const int fd, char **line)
+{
+	static char	*rest[OPEN_MAX];
+
+	if (fd < 0 || !line || BUFF_SIZE < 1 || fd >= OPEN_MAX)
+		return (-1);
+	if (!rest[fd])
+		rest[fd] = ft_strnew(0);
+	if (!rest[fd])
+		return (-1);
+	rest[fd] = ft_read_buffer(fd, rest[fd]);
+	if (!rest[fd])
+		return (-1);
+	*line = ft_extract_line(rest[fd]);
+	if (!*line)
+		return (-1);
+	if (ft_strlen(*line) == 0 && ft_strlen(rest[fd]) == 0)
+	{
+		free(rest[fd]);
+		rest[fd] = NULL;
+		return (0);
+	}
+	rest[fd] = ft_update_rest(rest[fd]);
 	return (1);
 }

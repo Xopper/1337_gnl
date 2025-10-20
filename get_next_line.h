@@ -16,9 +16,10 @@
 # include "libft/libft.h"
 # include <sys/types.h>
 # include <sys/uio.h>
+# include <limits.h>
 
 # define BUFF_SIZE 32
-# define TMP 4999
+# define OPEN_MAX 4096
 
 int		get_next_line(const int fd, char **line);
 
