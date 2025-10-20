@@ -16,9 +16,16 @@
 # include "libft/libft.h"
 # include <sys/types.h>
 # include <sys/uio.h>
+# include <limits.h>
 
 # define BUFF_SIZE 32
-# define TMP 4999
+
+typedef struct		s_fd_list
+{
+	int				fd;
+	char			*rest;
+	struct s_fd_list	*next;
+}					t_fd_list;
 
 int		get_next_line(const int fd, char **line);
 
